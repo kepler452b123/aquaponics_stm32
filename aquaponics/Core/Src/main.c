@@ -96,12 +96,32 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-
+	  ToggleLED(GPIO_A, GPIO_PIN_9);
+	  HAL_Delay(10);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
+}
+
+void ToggleLED(GPIO_Typedef * GPIOx, uint16 pin){
+	HAL_GPIO_TogglePin(GPIOx, pin);
+}
+
+void LEDOn(GPIO_Typedef * GPIOx, uint16 pin)
+{
+	HAL_GPIO_WritePin(GPIOx, pin, SET);
+}
+
+void LEDOff(GPIO_Typedef * GPIOx, uint16 pin)
+{
+	HAL_GPIO_WritePin(GPIOx, pin, RESET);
+}
+
+void GetDS18B20Readings(uint16 * temp)
+{
+	return;
 }
 
 /**
@@ -201,7 +221,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, LD2_Pin|GPIO_PIN_9, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : B1_Pin */
   GPIO_InitStruct.Pin = B1_Pin;
@@ -209,12 +229,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : LD2_Pin */
-  GPIO_InitStruct.Pin = LD2_Pin;
+  /*Configure GPIO pins : LD2_Pin PA9 */
+  GPIO_InitStruct.Pin = LD2_Pin|GPIO_PIN_9;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
