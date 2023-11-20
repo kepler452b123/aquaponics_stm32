@@ -78,6 +78,91 @@ void MicroDelay(uint16_t delay)
 	__HAL_TIM_SET_COUNTER(&htim3, 0);
 	while (__HAL_TIM_GET_COUNTER(&htim3) < delay);
 }
+
+void SetPinOutput(GPIO_TypeDef * GPIOx, uint16_t pin)
+{
+	GPIO_InitTypeDef GPIO_InitStruct = {0};
+	GPIO_InitStruct.Pin = pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+	HAL_GPIO_Init(GPIOx, &GPIO_InitStruct);
+}
+
+void SetPinInput(GPIO_TypeDef * GPIOx, uint16_t pin)
+{
+	GPIO_InitTypeDef GPIO_InitStruct = {0};
+	GPIO_InitStruct.Pin = pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	HAL_GPIO_Init(GPIOx, &GPIO_InitStruct);
+}
+
+void GetDS18B20Reading(uint16_t * temp)
+{
+
+}
+
+uint8_t checkDS18B20(void)
+{
+	uint8_t present = 1;
+	SetPinOutput(GPIOA, 15);
+	HAL_GPIO_WritePin(GPIOA, 15, 0);
+	MicroDelay(480);
+	SetPinInput(GPIOA, 15);
+	MicroDelay(80);
+
+	if (!(HAL_GPIO_ReadPin(GPIOA, 15) == 0))
+	{
+		present = -1;
+	}
+
+	MicroDelay(400);
+
+	return present;
+}
+
+void DS18B20TXByte(uint8_t byte)
+{
+	for (int i = 0; i < 8; i++)
+	{
+		if (byte && (i << 1) == 1)
+		{
+			SetPinOutput(GPIOA, 15);
+			HAL_GPIO_WritePin(GPIOA, 15, 0);
+			MicroDelay(1);
+
+			SetPinInput(GPIOA, 15);
+			MicroDelay(60);
+		}
+		else
+		{
+			SetPinOutput(GPIOA, 15);
+			HAL_GPIO_WritePin(GPIOA, 15, 0);
+			MicroDelay(60);
+
+			SetPinInput(GPIOA, 15);
+		}
+	}
+}
+
+void DS18B20RXByte(uint8_t * data)
+{
+	SetPinInput(GPIOA, 15);
+	for (int i = 0; i < 8; i++)
+	{
+		SetPinOutput(GPIOA,15);
+		HAL_GPIO_WritePin(GPIOA, 15, 0);
+		MicroDelay(2);
+
+		SetPinInput(GPIOA, 15);
+		if (HAL_GPIO_ReadPin (GPIOA, 15))
+		{
+			*data |= 1 << 1;
+		}
+		MicroDelay(60);
+	}
+}
+
 /* USER CODE END 0 */
 
 /**
