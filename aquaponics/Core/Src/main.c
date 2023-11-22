@@ -40,12 +40,15 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+ADC_HandleTypeDef hadc1;
+
 TIM_HandleTypeDef htim3;
 
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-
+int count = 0;
+uint16_t temperatureBuffer[10];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -53,6 +56,7 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_TIM3_Init(void);
+static void MX_ADC1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -68,6 +72,16 @@ void TempLEDOn()
 void TempLEDOff()
 {
 	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, RESET);
+}
+
+void pHLEDOn()
+{
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, SET);
+}
+
+void pHLEDOff()
+{
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, RESET);
 }
 
 void MicroDelay(uint16_t delay)
@@ -171,11 +185,6 @@ void GetDS18B20Reading(uint16_t * temp)
 	MicroDelay(1);
 	DS18B20TXByte(0x44);
 	HAL_Delay(750);
-	present = checkDS18B20();
-	if (present == 0)
-	{
-		return 0;
-	}
 	DS18B20TXByte(0xCC);
 	HAL_Delay(1);
 	DS18B20TXByte(0xBE);
@@ -188,6 +197,29 @@ void GetDS18B20Reading(uint16_t * temp)
 
 }
 
+void GetPHReading(uint16_t *pH)
+{
+	HAL_ADC_Start(&hadcl);
+	HAL_ADC_PollForConversion(&hadc1, HAL_Delay(5000));
+	pH |= HAL_ADC_GetValue;
+	pH += 7;
+}
+
+uint16_t AverageReadigs()
+{
+	uint16_t average = 0;
+	for (int i = 0; i < 10; i++)
+	{
+		average += temperatureBuffer[i];
+	}
+	average /= 10;
+	count = 0;
+	for (int i = 0; i < 10; i++)
+	{
+		temperatureBuffer[i] = 0;
+	}
+	return average;
+}
 /* USER CODE END 0 */
 
 /**
@@ -220,6 +252,7 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   MX_TIM3_Init();
+  MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_Base_Start(&htim3);
   /* USER CODE END 2 */
@@ -228,9 +261,12 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  count++;
 	  uint16_t temp = 0;
+	  uint16_t pH = 0;
 	  GetDS18B20Reading(&temp);
 	  HAL_Delay(50);
+	  GetPHReading(&temp);
 	  if ((temp > 30) || (temp < 26))
 	  {
 		  TempLEDOn();
@@ -238,6 +274,29 @@ int main(void)
 	  else
 	  {
 		  TempLEDOff();
+	  }
+	  if ((pH > 7.5) || (pH < 6.5))
+	  {
+		  pHLEDOn();
+	  }
+	  else
+	  {
+		  pHLEDOff();
+	  }
+	  temperatureBuffer[count - 1] = temp;
+	  if (count == 10)
+	  {
+		  uint16_t Avg = AverageReadings();
+		  if ( (AverageReadigs() > 30) || (AverageReadings() < 26) )
+		  {
+			  for (int i = 0; i < 10; i++)
+			  {
+				  TempLEDOn();
+				  HAL_Delay(10000);
+				  TempLEDOff();
+				  HAL_Delay(10000);
+			  }
+		  }
 	  }
     /* USER CODE END WHILE */
 
@@ -290,6 +349,58 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief ADC1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_ADC1_Init(void)
+{
+
+  /* USER CODE BEGIN ADC1_Init 0 */
+
+  /* USER CODE END ADC1_Init 0 */
+
+  ADC_ChannelConfTypeDef sConfig = {0};
+
+  /* USER CODE BEGIN ADC1_Init 1 */
+
+  /* USER CODE END ADC1_Init 1 */
+
+  /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
+  */
+  hadc1.Instance = ADC1;
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
+  hadc1.Init.Resolution = ADC_RESOLUTION_10B;
+  hadc1.Init.ScanConvMode = DISABLE;
+  hadc1.Init.ContinuousConvMode = DISABLE;
+  hadc1.Init.DiscontinuousConvMode = DISABLE;
+  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+  hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+  hadc1.Init.NbrOfConversion = 1;
+  hadc1.Init.DMAContinuousRequests = DISABLE;
+  hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+  if (HAL_ADC_Init(&hadc1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
+  */
+  sConfig.Channel = ADC_CHANNEL_1;
+  sConfig.Rank = 1;
+  sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN ADC1_Init 2 */
+
+  /* USER CODE END ADC1_Init 2 */
+
 }
 
 /**
@@ -391,6 +502,9 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOA, LD2_Pin|GPIO_PIN_9, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(DS18B20_GPIO_Port, DS18B20_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin : B1_Pin */
@@ -405,6 +519,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PB12 */
+  GPIO_InitStruct.Pin = GPIO_PIN_12;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pin : DS18B20_Pin */
   GPIO_InitStruct.Pin = DS18B20_Pin;
