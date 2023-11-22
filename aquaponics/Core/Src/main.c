@@ -59,18 +59,15 @@ static void MX_TIM3_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void ToggleLED(GPIO_TypeDef * GPIOx, uint16_t pin){
-	HAL_GPIO_TogglePin(GPIOx, pin);
+
+void TempLEDOn()
+{
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, SET);
 }
 
-void LEDOn(GPIO_TypeDef * GPIOx, uint16_t pin)
+void TempLEDOff()
 {
-	HAL_GPIO_WritePin(GPIOx, pin, SET);
-}
-
-void LEDOff(GPIO_TypeDef * GPIOx, uint16_t pin)
-{
-	HAL_GPIO_WritePin(GPIOx, pin, RESET);
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, RESET);
 }
 
 void MicroDelay(uint16_t delay)
@@ -97,23 +94,18 @@ void SetPinInput(GPIO_TypeDef * GPIOx, uint16_t pin)
 	HAL_GPIO_Init(GPIOx, &GPIO_InitStruct);
 }
 
-void GetDS18B20Reading(uint16_t * temp)
-{
-
-}
-
-uint8_t checkDS18B20(void)
+uint8_t checkDS18B20()
 {
 	uint8_t present = 1;
 	SetPinOutput(GPIOA, 15);
-	HAL_GPIO_WritePin(GPIOA, 15, 0);
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, 0);
 	MicroDelay(480);
 	SetPinInput(GPIOA, 15);
 	MicroDelay(80);
 
-	if (!(HAL_GPIO_ReadPin(GPIOA, 15) == 0))
+	if (!(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_15) == 0))
 	{
-		present = -1;
+		present = 0;
 	}
 
 	MicroDelay(400);
@@ -128,7 +120,7 @@ void DS18B20TXByte(uint8_t byte)
 		if (byte && (i << 1) == 1)
 		{
 			SetPinOutput(GPIOA, 15);
-			HAL_GPIO_WritePin(GPIOA, 15, 0);
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, 0);
 			MicroDelay(1);
 
 			SetPinInput(GPIOA, 15);
@@ -137,7 +129,7 @@ void DS18B20TXByte(uint8_t byte)
 		else
 		{
 			SetPinOutput(GPIOA, 15);
-			HAL_GPIO_WritePin(GPIOA, 15, 0);
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, 0);
 			MicroDelay(60);
 
 			SetPinInput(GPIOA, 15);
@@ -151,16 +143,49 @@ void DS18B20RXByte(uint8_t * data)
 	for (int i = 0; i < 8; i++)
 	{
 		SetPinOutput(GPIOA,15);
-		HAL_GPIO_WritePin(GPIOA, 15, 0);
+		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, 0);
 		MicroDelay(2);
 
 		SetPinInput(GPIOA, 15);
-		if (HAL_GPIO_ReadPin (GPIOA, 15))
+		if (HAL_GPIO_ReadPin (GPIOA, GPIO_PIN_15))
 		{
 			*data |= 1 << i;
 		}
 		MicroDelay(60);
 	}
+}
+
+void GetDS18B20Reading(uint16_t * temp)
+{
+	uint8_t * temp1 = 0;
+	uint8_t * temp2 = 0;
+	SetPinOutput(GPIOA, 15);
+	uint8_t present = 0;
+	present = checkDS18B20();
+	if (present == 0)
+	{
+		return 0;
+	}
+	HAL_Delay(1);
+	DS18B20TXByte(0xCC);
+	MicroDelay(1);
+	DS18B20TXByte(0x44);
+	HAL_Delay(750);
+	present = checkDS18B20();
+	if (present == 0)
+	{
+		return 0;
+	}
+	DS18B20TXByte(0xCC);
+	HAL_Delay(1);
+	DS18B20TXByte(0xBE);
+	DS18B20RXByte(temp1);
+	DS18B20RXByte(temp2);
+	*temp = *temp2 << 8;
+	*temp = *temp | *temp1;
+
+
+
 }
 
 /* USER CODE END 0 */
@@ -203,10 +228,17 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  LEDOn(GPIOA, GPIO_PIN_9);
-	  MicroDelay(50000);
-	  LEDOff(GPIOA, GPIO_PIN_9);
-	  MicroDelay(50000);
+	  uint16_t temp = 0;
+	  GetDS18B20Reading(&temp);
+	  HAL_Delay(50);
+	  if ((temp > 30) || (temp < 26))
+	  {
+		  TempLEDOn();
+	  }
+	  else
+	  {
+		  TempLEDOff();
+	  }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
