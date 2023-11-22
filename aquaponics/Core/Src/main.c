@@ -157,7 +157,7 @@ void DS18B20RXByte(uint8_t * data)
 		SetPinInput(GPIOA, 15);
 		if (HAL_GPIO_ReadPin (GPIOA, 15))
 		{
-			*data |= 1 << 1;
+			*data |= 1 << i;
 		}
 		MicroDelay(60);
 	}
